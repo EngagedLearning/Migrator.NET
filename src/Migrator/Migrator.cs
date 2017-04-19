@@ -53,17 +53,26 @@ namespace Migrator
         {
         }
 
+        public Migrator(string provider, string connectionString, List<Assembly> migrationAssemblies, bool trace, ILogger logger)
+            : this(ProviderFactory.Create(provider, connectionString), migrationAssemblies, trace, logger)
+        {
+        }
+
         public Migrator(ITransformationProvider provider, Assembly migrationAssembly, bool trace)
             : this(provider, migrationAssembly, trace, new Logger(trace, new ConsoleWriter()))
         {
         }
 
         public Migrator(ITransformationProvider provider, Assembly migrationAssembly, bool trace, ILogger logger)
+            : this(provider, new List<Assembly> { migrationAssembly}, trace, logger )
+        {
+        }
+
+        private Migrator(ITransformationProvider provider, List<Assembly> migrationAssemblies, bool trace, ILogger logger)
         {
             _provider = provider;
             Logger = logger;
-
-            _migrationLoader = new MigrationLoader(provider, migrationAssembly, trace);
+            _migrationLoader = new MigrationLoader(provider, migrationAssemblies, trace);
             _migrationLoader.CheckForDuplicatedVersion();
         }
 

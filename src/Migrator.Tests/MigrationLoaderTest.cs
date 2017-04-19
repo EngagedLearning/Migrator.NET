@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Reflection;
 using Migrator.Framework;
 using Migrator.Framework.Loggers;
@@ -7,7 +9,7 @@ using NUnit.Mocks;
 namespace Migrator.Tests
 {
     [TestFixture]
-    public class MigrationLoaderTest 
+    public class MigrationLoaderTest
     {
 
         private MigrationLoader _migrationLoader;
@@ -45,6 +47,33 @@ namespace Migrator.Tests
             _migrationLoader.CheckForDuplicatedVersion();
         }
 
+        [Test]
+        public void AddingASecondSetOfTypesSortsAppropriately()
+        {
+            DynamicMock providerMock = new DynamicMock(typeof(ITransformationProvider));
+
+            providerMock.SetReturnValue("get_CurrentVersion", 0);
+            providerMock.SetReturnValue("get_Logger", new Logger(false));
+            providerMock.ExpectNoCall("Rollback");
+
+            _migrationLoader = new MigrationLoader((ITransformationProvider)providerMock.MockInstance, new List<Assembly>(), true);
+            var later = typeof(LaterMigration);
+            var earlier = typeof(EarlierMigration);
+            _migrationLoader.AddMigrationTypes(new List<Type> { later });
+            _migrationLoader.AddMigrationTypes(new List<Type> { earlier });
+            CollectionAssert.AreEqual(new[] { earlier, later }, _migrationLoader.MigrationsTypes);
+        }
+
+        [Migration(1)]
+        private class EarlierMigration
+        {
+        }
+
+        [Migration(2)]
+        private class LaterMigration
+        {
+        }
+
         private void SetUpCurrentVersion(int version, bool assertRollbackIsCalled)
         {
             DynamicMock providerMock = new DynamicMock(typeof(ITransformationProvider));
@@ -56,7 +85,7 @@ namespace Migrator.Tests
             else
                 providerMock.ExpectNoCall("Rollback");
 
-            _migrationLoader = new MigrationLoader((ITransformationProvider)providerMock.MockInstance, Assembly.GetExecutingAssembly(), true);
+            _migrationLoader = new MigrationLoader((ITransformationProvider)providerMock.MockInstance, new List<Assembly> { Assembly.GetExecutingAssembly() }, true);
             _migrationLoader.MigrationsTypes.Add(typeof(MigratorTest.FirstMigration));
             _migrationLoader.MigrationsTypes.Add(typeof(MigratorTest.SecondMigration));
             _migrationLoader.MigrationsTypes.Add(typeof(MigratorTest.ThirdMigration));

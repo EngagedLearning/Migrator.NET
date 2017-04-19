@@ -14,10 +14,10 @@ namespace Migrator
         private readonly ITransformationProvider _provider;
         private readonly List<Type> _migrationsTypes = new List<Type>();
 
-        public MigrationLoader(ITransformationProvider provider, Assembly migrationAssembly, bool trace)
+        public MigrationLoader(ITransformationProvider provider, IList<Assembly> migrationAssemblies, bool trace)
         {
             _provider = provider;
-            AddMigrations(migrationAssembly);
+            AddMigrations(migrationAssemblies.Count > 0 ? migrationAssemblies[0] : null);
 
             if (trace)
             {
@@ -31,8 +31,14 @@ namespace Migrator
 
         public void AddMigrations(Assembly migrationAssembly)
         {
-            if (migrationAssembly != null)
-                _migrationsTypes.AddRange(GetMigrationTypes(migrationAssembly));
+            var migrationTypes = migrationAssembly != null ? GetMigrationTypes(migrationAssembly) : new List<Type>();
+            AddMigrationTypes(migrationTypes);
+        }
+
+        public void AddMigrationTypes(List<Type> migrationTypes)
+        {
+            _migrationsTypes.AddRange(migrationTypes);
+            _migrationsTypes.Sort(new MigrationTypeComparer(true));
         }
 
         /// <summary>
@@ -84,8 +90,8 @@ namespace Migrator
             List<Type> migrations = new List<Type>();
             foreach (Type t in asm.GetExportedTypes())
             {
-                MigrationAttribute attrib = 
-                    (MigrationAttribute)  Attribute.GetCustomAttribute(t, typeof (MigrationAttribute));
+                MigrationAttribute attrib =
+                    (MigrationAttribute)Attribute.GetCustomAttribute(t, typeof(MigrationAttribute));
 
                 if (attrib != null && typeof(IMigration).IsAssignableFrom(t) && !attrib.Ignore)
                 {
@@ -113,11 +119,11 @@ namespace Migrator
 
         public List<long> GetAvailableMigrations()
         {
-        	//List<int> availableMigrations = new List<int>();
+            //List<int> availableMigrations = new List<int>();
             _migrationsTypes.Sort(new MigrationTypeComparer(true));
             return _migrationsTypes.ConvertAll(new Converter<Type, long>(GetMigrationVersion));
         }
-        
+
         public IMigration GetMigration(long version)
         {
             foreach (Type t in _migrationsTypes)
