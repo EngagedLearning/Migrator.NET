@@ -22,8 +22,13 @@ namespace Migrator
     /// <summary>
     /// Migrations mediator.
     /// </summary>
-    public class Migrator
+    public class Migrator : IDisposable
     {
+        public void Dispose()
+        {
+            _provider?.Dispose();
+        }
+
         private readonly ITransformationProvider _provider;
 
         private readonly MigrationLoader _migrationLoader;
